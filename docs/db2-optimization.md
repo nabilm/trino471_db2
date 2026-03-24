@@ -11,17 +11,9 @@ connector.name=db2
 connection-url=jdbc:db2://<host>:50000/<DB>:currentSchema=DB2INST1;progressiveStreaming=2;queryDataSize=1048576;
 
 # ----------------------------
-# Connection Pool
-# ----------------------------
-connection-pool.max-size=30
-connection-pool.min-size=5
-connection-pool.idle-timeout=10m
-
-# ----------------------------
 # Pushdown — offload work to DB2 engine
 # ----------------------------
 join-pushdown.enabled=true
-join-pushdown.strategy=EAGER
 aggregation-pushdown.enabled=true
 topn-pushdown.enabled=true
 
@@ -30,8 +22,6 @@ topn-pushdown.enabled=true
 # Avoids repeated JDBC metadata calls on every query
 # ----------------------------
 metadata.cache-ttl=10m
-metadata.cache-missing-duration=2m
-metadata.schemas-cache-ttl=10m
 
 # ----------------------------
 # Type Handling
@@ -91,7 +81,7 @@ When enabled, Trino pushes these operations directly into DB2 SQL rather than pu
 | `GROUP BY` / aggregations | `aggregation-pushdown.enabled=true` | SUM, COUNT, AVG run on DB2 side |
 | `ORDER BY` + `LIMIT` | `topn-pushdown.enabled=true` | Pagination offloaded to DB2 |
 
-> ⚠️ Set `join-pushdown.strategy=EAGER` only if DB2 is **not** under heavy concurrent load — it shifts CPU pressure from Trino workers to the DB2 server.
+> ⚠️ Monitor DB2 CPU when enabling join pushdown — it shifts query execution pressure from Trino workers to the DB2 server.
 
 ---
 
@@ -101,7 +91,6 @@ When enabled, Trino pushes these operations directly into DB2 SQL rather than pu
 |---|---|---|
 | `SELECT *` from DB2 tables | Disables column pruning — fetches all columns even if unused | Always select specific columns |
 | High `metadata.cache-ttl` on frequently changing schemas | Trino caches stale table/column definitions | Keep TTL low (`1m`) or `0` during development |
-| `join-pushdown.strategy=EAGER` under DB2 load | Overloads DB2 with complex SQL | Use `AUTOMATIC` instead |
 | `-Xint` in `jvm.config` on RHEL | Disables JIT — severe performance degradation | Remove it entirely on native x86 |
 
 ---
