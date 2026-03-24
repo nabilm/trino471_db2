@@ -1,6 +1,6 @@
 # DB2 Connector — Performance Optimization Guide
 
-> Based on Trino 471 + IBM DB2 JDBC plugin (`trino-db2-shb:471`)
+> Based on Trino 471 + IBM DB2 JDBC plugin (`trino-db2:471`)
 
 ---
 
