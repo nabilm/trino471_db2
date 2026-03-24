@@ -107,4 +107,4 @@ WHERE status = 'ACTIVE'
 GROUP BY region;
 ```
 
-Look for `:: [[ACTIVE]]` under the scan node — means the `WHERE` filter was pushed to DB2. If you see a `FilterNode` above the scan, the predicate was **not** pushed.
+Look for `:: [[ACTIVE]]` under the scan node — means the `WHERE` filter was pushed to DB2. If you see a `FilterNode` above the scan, the predicate was **not** pushed..
