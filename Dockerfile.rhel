@@ -1,0 +1,40 @@
+# =============================================================================
+# Multi-stage build for RHEL 8 / Podman (native x86_64, no Rosetta workarounds)
+# =============================================================================
+
+# --- Stage 1: Build the plugin with Maven ---
+FROM maven:3.9.9-eclipse-temurin-23 AS builder
+
+WORKDIR /build
+
+# Copy the DB2 JDBC driver (not in Maven Central — must be in libs/)
+COPY libs/db2jcc-db2jcc4.jar /tmp/db2jcc-db2jcc4.jar
+
+# Install the DB2 driver into the local Maven repository
+RUN mvn install:install-file \
+    -Dfile=/tmp/db2jcc-db2jcc4.jar \
+    -DgroupId=com.ibm.db2.jcc \
+    -DartifactId=db2jcc \
+    -Dversion=db2jcc4 \
+    -Dpackaging=jar \
+    -q
+
+# Copy project source
+COPY pom.xml .
+COPY src/ src/
+
+# Bootstrap a minimal .git so git-commit-id plugin doesn't fail
+RUN git init && \
+    git config user.email "build@rhel" && \
+    git config user.name "Podman Build" && \
+    git add -A && \
+    git commit -m "build" --allow-empty -q
+
+# Build the plugin (skip tests, skip git-commit-id)
+RUN mvn clean package -DskipTests -Dgit-commit-id.skip=true --no-transfer-progress
+
+# --- Stage 2: Final Trino image with DB2 plugin ---
+ARG BASE=trinodb/trino:471
+FROM ${BASE}
+
+COPY --chown=trino:trino --from=builder /build/target/trino-db2-471/* /usr/lib/trino/plugin/db2/
