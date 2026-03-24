@@ -1,17 +1,30 @@
 # =============================================================================
-# Multi-stage build for RHEL 8 / Podman (native x86_64, no Rosetta workarounds)
+# Multi-stage build for RHEL 8 / Podman (native x86_64)
+# Maven dependencies resolved via internal Artifactory mirror — no internet needed.
 # =============================================================================
 
 # --- Stage 1: Build the plugin with Maven ---
-FROM maven:3.9.9-eclipse-temurin-23 AS builder
+ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-23
+FROM ${MAVEN_IMAGE} AS builder
 
 WORKDIR /build
+
+# Trust the internal Artifactory SSL certificate
+RUN openssl s_client -connect <artficatory_url> -showcerts </dev/null 2>/dev/null \
+    | openssl x509 -outform PEM > /tmp/artifactory.crt && \
+    keytool -importcert -noprompt -alias artifactory-internal \
+      -keystore "$JAVA_HOME/lib/security/cacerts" \
+      -storepass changeit \
+      -file /tmp/artifactory.crt
+
+# Use internal Artifactory as Maven mirror
+COPY settings.xml /root/.m2/settings.xml
 
 # Copy the DB2 JDBC driver (not in Maven Central — must be in libs/)
 COPY libs/db2jcc-db2jcc4.jar /tmp/db2jcc-db2jcc4.jar
 
 # Install the DB2 driver into the local Maven repository
-RUN mvn install:install-file \
+RUN mvn org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file \
     -Dfile=/tmp/db2jcc-db2jcc4.jar \
     -DgroupId=com.ibm.db2.jcc \
     -DartifactId=db2jcc \
@@ -30,8 +43,11 @@ RUN git init && \
     git add -A && \
     git commit -m "build" --allow-empty -q
 
-# Build the plugin (skip tests, skip git-commit-id)
-RUN mvn clean package -DskipTests -Dgit-commit-id.skip=true --no-transfer-progress
+# Build the plugin (skip tests and enforcer)
+RUN mvn clean package \
+    -DskipTests \
+    -Dgit-commit-id.skip=true \
+    --no-transfer-progress
 
 # --- Stage 2: Final Trino image with DB2 plugin ---
 ARG BASE=trinodb/trino:471
