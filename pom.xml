@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>io.trino</groupId>
 		<artifactId>trino-root</artifactId>
-		<version>471</version>
+		<version>480</version>
 	</parent>
 
 	<artifactId>trino-db2</artifactId>
@@ -32,6 +32,7 @@
 		<dependency>
 			<groupId>com.google.inject</groupId>
 			<artifactId>guice</artifactId>
+			<classifier>classes</classifier>
 		</dependency>
 
 		<dependency>
@@ -41,15 +42,8 @@
 		</dependency>
 
 		<dependency>
-			<groupId>javax.inject</groupId>
-			<artifactId>javax.inject</artifactId>
-			<version>1</version>
-		</dependency>
-
-		<dependency>
-			<groupId>javax.validation</groupId>
-			<artifactId>validation-api</artifactId>
-			<version>2.0.1.Final</version>
+			<groupId>jakarta.validation</groupId>
+			<artifactId>jakarta.validation-api</artifactId>
 		</dependency>
 
 		<!-- trino SPI -->
@@ -86,47 +80,5 @@
 			<scope>provided</scope>
 		</dependency>
 
-		<dependency>
-			<groupId>org.openjdk.jol</groupId>
-			<artifactId>jol-core</artifactId>
-			<scope>provided</scope>
-		</dependency>
-
-		<!-- for testing -->
-		<dependency>
-			<groupId>io.trino</groupId>
-			<artifactId>trino-main</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>io.trino</groupId>
-			<artifactId>trino-tests</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>io.trino</groupId>
-			<artifactId>trino-tpch</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>io.trino.tpch</groupId>
-			<artifactId>tpch</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>io.airlift</groupId>
-			<artifactId>testing</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.testng</groupId>
-			<artifactId>testng</artifactId>
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
 </project>

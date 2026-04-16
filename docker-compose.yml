@@ -1,0 +1,90 @@
+version: '3.8'
+
+# ============================================================
+# TRINO 471 STACK: Coordinator + 2 Workers
+# ============================================================
+# Config tree (absolute paths on host):
+#
+#   /app/dlab/apps/trino/
+#   ├── catalog/
+#   │   ├── db2.properties
+#   │   └── iceberg.properties
+#   ├── coordinator/
+#   │   ├── config.properties
+#   │   ├── jvm.config
+#   │   └── node.properties
+#   ├── worker/
+#   │   ├── config.properties
+#   │   ├── jvm.config
+#   │   └── node.properties
+#   ├── .env
+#   └── docker-compose.yml   ← this file
+#
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Logs:   docker compose logs -f
+# Scale workers: docker compose up -d --scale trino-worker=3
+# ============================================================
+
+services:
+
+  # ========================================================
+  # 1. Trino Coordinator
+  # ========================================================
+  trino-coordinator:
+    image: artifactory.shbmain.shb.biz/docker-dlab-aaai-snapshots/trino-db2-shb:471
+    container_name: trino-coordinator
+    hostname: trino-coordinator
+    env_file:
+      - /app/dlab/apps/trino/.env
+    ports:
+      - "8099:8080"
+    volumes:
+      - /app/dlab/apps/trino/catalog:/etc/trino/catalog:z
+      - /app/dlab/apps/trino/coordinator/config.properties:/etc/trino/config.properties:z
+      - /app/dlab/apps/trino/coordinator/jvm.config:/etc/trino/jvm.config:z
+      - /app/dlab/apps/trino/coordinator/node.properties:/etc/trino/node.properties:z
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - service-net
+
+  # ========================================================
+  # 2. Trino Worker (2 replicas)
+  # ========================================================
+  trino-worker:
+    image: artifactory.shbmain.shb.biz/docker-dlab-aaai-snapshots/trino-db2-shb:471
+    env_file:
+      - /app/dlab/apps/trino/.env
+    command: bash -c "mkdir -p /tmp/trino/spill && /usr/lib/trino/bin/run-trino"
+    volumes:
+      - /app/dlab/apps/trino/catalog:/etc/trino/catalog:z
+      - /app/dlab/apps/trino/worker/config.properties:/etc/trino/config.properties:z
+      - /app/dlab/apps/trino/worker/jvm.config:/etc/trino/jvm.config:z
+      - /app/dlab/apps/trino/worker/node.properties:/etc/trino/node.properties:z
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx2G
+    depends_on:
+      trino-coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+    networks:
+      - service-net
+
+networks:
+  service-net:
+    name: service-net
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.30.0.0/24"
+          ip_range: "172.30.0.0/24"
+          gateway: "172.30.0.1"

@@ -17,7 +17,7 @@ import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
 import io.airlift.configuration.ConfigSecuritySensitive;
 
-import javax.validation.constraints.Min;
+import jakarta.validation.constraints.Min;
 
 public class DB2Config
 {
