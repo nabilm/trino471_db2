@@ -25,6 +25,7 @@ public class DB2Config
     private int varcharMaxLength = 32672;
     // this value is for IAM authentication
     private String apiKey;
+    private boolean impersonationEnabled;
 
     @Min(1)
     public int getVarcharMaxLength()
@@ -51,6 +52,19 @@ public class DB2Config
     public DB2Config setApiKey(String apiKey)
     {
         this.apiKey = apiKey;
+        return this;
+    }
+
+    public boolean isImpersonationEnabled()
+    {
+        return impersonationEnabled;
+    }
+
+    @Config("db2.impersonation.enabled")
+    @ConfigDescription("Issue SET SESSION AUTHORIZATION after each connection to impersonate the Trino user in DB2 (requires SETSESSIONUSER privilege on the service account)")
+    public DB2Config setImpersonationEnabled(boolean impersonationEnabled)
+    {
+        this.impersonationEnabled = impersonationEnabled;
         return this;
     }
 }

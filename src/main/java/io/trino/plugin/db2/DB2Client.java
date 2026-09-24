@@ -107,6 +107,7 @@ public class DB2Client
         extends BaseJdbcClient
 {
     private final int varcharMaxLength;
+    private final boolean impersonationEnabled;
     private static final int DB2_MAX_SUPPORTED_TIMESTAMP_PRECISION = 12;
     // java.util.LocalDateTime supports up to nanosecond precision
     private static final int MAX_LOCAL_DATE_TIME_PRECISION = 9;
@@ -122,6 +123,7 @@ public class DB2Client
     {
         super("\"", connectionFactory, queryBuilder, ImmutableSet.of(), identifierMapping, remoteQueryModifier, false);
         this.varcharMaxLength = db2config.getVarcharMaxLength();
+        this.impersonationEnabled = db2config.isImpersonationEnabled();
 
         // http://stackoverflow.com/questions/16910791/getting-error-code-4220-with-null-sql-state
         System.setProperty("db2.jcc.charsetDecoderEncoder", "3");
@@ -136,6 +138,17 @@ public class DB2Client
             // TRANSACTION_READ_UNCOMMITTED = Uncommitted read
             // http://www.ibm.com/developerworks/data/library/techarticle/dm-0509schuetz/
             connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            if (impersonationEnabled) {
+                // Strip Kerberos realm (e.g. analyst@EXAMPLE.COM → ANALYST) and switch
+                // the DB2 session identity. Requires SETSESSIONUSER ON PUBLIC granted to
+                // the service account, plus a matching DB2 trusted context for the
+                // coordinator IP + SVCTRINO SYSTEM AUTHID.
+                String trinoUser = session.getUser();
+                String dbUser = trinoUser.replaceAll("@.*", "").toUpperCase(ENGLISH);
+                try (java.sql.Statement stmt = connection.createStatement()) {
+                    stmt.execute("SET SESSION AUTHORIZATION " + dbUser);
+                }
+            }
         }
         catch (SQLException e) {
             connection.close();

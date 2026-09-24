@@ -1,0 +1,3 @@
+FROM nabilm/trino-db2:latest
+# Replace DB2 connector plugin with impersonation-patched version
+COPY --chown=trino:trino target/trino-db2-480/* /usr/lib/trino/plugin/db2/
