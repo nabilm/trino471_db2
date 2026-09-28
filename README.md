@@ -174,11 +174,63 @@ colima start --arch aarch64 --vm-type vz --cpu 6 --memory 12 --disk 60
 |---|---|---|
 | `db2.varchar-max-length` | `32672` | Max VARCHAR length in CREATE/ALTER TABLE |
 | `db2.iam-api-key` | — | IBM Cloud IAM API key (replaces user/password) |
+| `db2.impersonation.enabled` | `false` | Issue `SET SESSION AUTHORIZATION` after each connection (see below) |
 
 ### SSL
 
 ```properties
 connection-url=jdbc:db2://<host>:<port>/<database>:sslConnection=true;
+```
+
+---
+
+## DB2 User Impersonation (SET SESSION AUTHORIZATION)
+
+The `trino_480` branch includes a patch that makes the connector issue
+`SET SESSION AUTHORIZATION <user>` immediately after each DB2 connection,
+so DB2 sees the Trino-authenticated user instead of the service account.
+
+**Example:** `analyst@EXAMPLE.COM` authenticates via Kerberos → Trino strips the
+realm and uppercases → DB2 records `SESSION_AUTH_ID = ANALYST` instead of `SVCTRINO`.
+
+### Enable in catalog config
+
+```properties
+connector.name=db2
+connection-url=jdbc:db2://<host>:<port>/<database>
+connection-user=svctrino
+connection-password=<password>
+db2.impersonation.enabled=true
+```
+
+### DB2 prerequisites
+
+```sql
+-- Allow the service account to switch session identity
+GRANT SETSESSIONUSER ON PUBLIC TO USER SVCTRINO;
+
+-- Trusted context so the switch requires no re-authentication
+CREATE TRUSTED CONTEXT trino_context
+    BASED UPON CONNECTION USING SYSTEM AUTHID SVCTRINO
+    ATTRIBUTES (ADDRESS '<trino-coordinator-ip>')
+    WITH USE FOR PUBLIC WITHOUT AUTHENTICATION
+    ENABLE;
+```
+
+### Use the pre-built image
+
+The compiled plugin JARs are committed to `target/trino-db2-480/` on the
+`trino_480` branch. Build the image without running `mvn`:
+
+```bash
+git checkout trino_480
+docker build -f Dockerfile.impersonation -t nabilm/trino-db2-impersonation:480-db2-patch .
+```
+
+Or pull directly from Docker Hub:
+
+```bash
+docker pull nabilm/trino-db2-impersonation:480-db2-patch
 ```
 
 ---
@@ -204,4 +256,4 @@ Suggested Xray suppression justification:
 - [IBM/trino-db2](https://github.com/IBM/trino-db2) — original plugin
 - [Trino 480 release notes](https://trino.io/docs/current/release/release-480.html)
 - [Docker Hub: nabilm/trino-db2](https://hub.docker.com/r/nabilm/trino-db2)
-- [trino_db2_minio](../trino_db2_minio) — full local dev stack using this image
+- [Docker Hub: nabilm/trino-db2-impersonation](https://hub.docker.com/r/nabilm/trino-db2-impersonation) — patched image with `SET SESSION AUTHORIZATION`
